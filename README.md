@@ -1,79 +1,84 @@
-# Introduction
+# Application Todo avec MongoDB sur Scalingo
 
-This web app built with a CLEAN stack (CLoudant NoSQL DB, Express, Angular and Node.js) is ready to be deployed on ICP (IBM Cloud Platform).
+Ce guide explique comment déployer l'application **Todo** en utilisant une base MongoDB sur Scalingo.
 
-![Todo](./images/screenshot.png)
+## 🛠️ Pré-requis
 
+- Un compte [Scalingo](https://scalingo.com)
+- Un compte [GitHub](https://github.com)
+- Node.js installé localement
 
-Watch this 6 mins <a href="https://youtu.be/XVVb-aLw9ow" target=”_blank”>YouTube video</a> to understand all the deployment steps below. Note: this video excludes the cluster provisioning.
+## 🚀 Étapes de Déploiement
 
+### 1. Forker et cloner le projet
 
-# How to deploy this app in Kubernetes?
+Fork ce repository, puis clone ta copie locale :
 
-1. If you don't already have a Kubernetes cluster, create one for **Free** from IBM Cloud Catalog by selecting the [Kubernetes Service](https://cloud.ibm.com/kubernetes/catalog/create).
+```bash
+git clone https://github.com/<ton-username>/mytodo.git
+cd mytodo
+```
 
-    Give it a **Name** and select a **Resource Group**.
-    > 20 min provisioning time
+### 2. Créer une application Scalingo
 
-    ![Cluster](./images/iks-free-cluster.jpg)
+- Connecte-toi à [Scalingo Dashboard](https://dashboard.scalingo.com)
+- Clique sur **New App**
+- Donne-lui un nom (ex : `mytodo-app`)
 
-1. [Optional] If you want to securely store your API Key used in the Continuous Delivery later, provision a service [Key Protect](https://cloud.ibm.com/catalog/services/key-protect).
+### 3. Ajouter MongoDB
 
-    Make sure to select the same **Region** as your cluster location, enter a **Service Name**, select a **Resource Group** and a **Network Policy**.
-    > 2 min provisioning time
+- Va dans **Add-ons** de ton app Scalingo
+- Sélectionne **MongoDB** et clique sur **Provisionner**
 
-    ![Key Protect](./images/key-protect.jpg)
+> Cela ajoute automatiquement une variable d'environnement `SCALINGO_MONGO_URL`
 
-1. To automate the deployment of this app into your Kubernetes cluster, click the button below.
+### 4. Configurer le projet
 
-    <a href="https://cloud.ibm.com/devops/setup/deploy?repository=https://github.com/lionelmace/mytodo&branch=master" target=”_blank”>![](./images/toolchain0-button.png)</a>
+- Vérifie que ton fichier de connexion MongoDB (`db.js`) utilise bien :
 
+```js
+const connectionString = process.env.SCALINGO_MONGO_URL;
+MongoClient.connect(connectionString, options, (err, mongoDb) => {
+  if (err) {
+    reject(err);
+    console.error("Erreur connexion MongoDB:", err);
+  } else {
+    db = mongoDb.db().collection('todos');
+    resolve();
+  }
+});
+```
 
-1. Enter a **Toolchain Name**, select the **Region** and a **Resource Group** where your cluster was created.
+### 5. Créer le fichier `Procfile`
 
-    ![Toolchain](./images/toolchain1-create.jpg)
+Crée à la racine du projet le fichier nommé `Procfile` :
 
-1. In the tab **Git Repos and Issue Tracking**, keep the default setting .
+```
+web: npm start
+```
 
-    ![Toolchain](./images/toolchain2-git.jpg)
+### 6. Déployer sur Scalingo
 
-1. In the tab **Delivery Pipeline**, create a new API Key.
+Initialise Git pour Scalingo et pousse ton application :
 
-    ![Toolchain](./images/toolchain3-newkey.jpg)
+```bash
+scalingo git-setup mytodo-app
 
-1. A panel will open, check the option **Save this key in a secrets store for resuse** if you have created an instance of the service Key Protect.
-    > Keep this option unchecked if you have decided not to use Key Protect.
+# Commit et déploiement
+git add .
+git commit -m "Déploiement Todo app avec MongoDB sur Scalingo"
+git push scalingo main
+```
 
-    ![Toolchain](./images/toolchain4-secretkey.jpg)
+### 7. Vérifier le déploiement
 
+Accède à ton application via :
 
-1. The toolchain will automatically try to fill out the remaining information. Control the Resource Group, the region and the cluster name, then, click **Create**. 
+```
+https://mytodo-ynov.osc-fr1.scalingo.io/
+```
 
-    ![Toolchain](./images/toolchain5-final.jpg)
+## 🛑 Dépannage fréquent
 
-1. The toolchain is being created. That includes a Github repo to clone the source code of the app. 
-
-    ![Toolchain](./images/toolchain6-overview.jpg)
-
-1. Click **Delivery Pipeline** in the Overview. You will see the stages progressing in pipeline.
-
-    > 6 min deployment time 
-    ![Toolchain](./images/toolchain7-pipeline.jpg)
-
-1. Click the link **View logs and history** in the last stage **DEPLOY**. Scroll down to the bottom. You will find the link to your application.
-
-    ![Toolchain](./images/toolchain8-applink.jpg)
-
-    > If you have a free cluster, the url will be using the IP address of a worker node.
-    > If you have a paid cluster, the url will be a domain name finishing with *.appdomain.cloud.
-
-Congratulations! Your app is up and running in the cluster.
-
-
-# Step by step Deployment
-
-Those two tutorials will show you in details how to deploy this step by step:
-
-* With IKS (IBM Cloud Kubernetes Service), follow this [tutorial](https://lionelmace.github.io/iks-lab)
-
-* With ICF (IBM Cloud Foundry), follow this [tutorial](https://github.com/lionelmace/ibmcloud-labs/tree/master/labs/Lab%20Cloud%20Foundry%20-%20Deploy%20TODO%20web%20application)
+- **Erreur 500** (Unauthorized) : vérifie que tu utilises bien `mongoDb.db()` sans nom de base explicite.
+- **Variable manquante** : Vérifie via Scalingo Dashboard → Environment si `SCALINGO_MONGO_URL` est présente.
